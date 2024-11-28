@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Object Viewer</title>
+  <style>
+    /* center and style the page */
+    body {
+      margin: 0;
+      padding-top: 20px; /* space for the title */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f4f4f4;
+      font-family: Arial, sans-serif;
+    }
+
+    /* style the title */
+    h1 {
+      margin-bottom: 20px;
+      font-size: 24px;
+      color: #333;
+    }
+
+    /* style the canvas for rendering */
+    canvas {
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+
+    /* style the buttons */
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid #333;
+      background-color: #fff;
+      color: #333;
+      border-radius: 5px;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    button:hover {
+      background-color: #333;
+      color: #fff;
+    }
+
+    /* button container for better alignment */
+    .button-container {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- project title -->
+  <h1>3D Object Viewer</h1>
+
+  <!-- buttons for shape switching -->
+  <div class="button-container">
+    <button id="cubeButton">Cube</button>
+    <button id="sphereButton">Sphere</button>
+  </div>
+
+  <!-- canvas for rendering -->
+  <canvas id="glCanvas" width="800" height="600"></canvas>
+
+  <!-- include glMatrix library for matrix operations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+
+  <!-- include the main WebGL script -->
+  <script src="main.js"></script>
+</body>
+</html>
