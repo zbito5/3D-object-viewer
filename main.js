@@ -14,17 +14,52 @@ gl.enable(gl.DEPTH_TEST); // enable depth testing for 3d rendering
 // vertex shader code
 const vertexShaderSource = `
   attribute vec4 aPosition;
+  attribute vec3 aNormal;
   uniform mat4 uModelViewMatrix;
   uniform mat4 uProjectionMatrix;
+  uniform mat4 uNormalMatrix; 
+  varying vec3 vNormal;
+  varying vec3 vPosition;
   void main() {
+    vPosition = vec3(uModelViewMatrix * aPosition);
+    vNormal = normalize(mat3(uNormalMatrix) * aNormal); 
     gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition;
   }
 `;
 
 // fragment shader code
 const fragmentShaderSource = `
+  precision mediump float;
+  varying vec3 vNormal;
+  varying vec3 vPosition;
+  uniform vec3 uLightPosition;
+  uniform vec3 uLightColor;
+  uniform vec3 uAmbientLight;
+  uniform vec3 uMaterialAmbient;
+  uniform vec3 uMaterialDiffuse;
+  uniform vec3 uMaterialSpecular;
+  uniform float uShininess;
+
   void main() {
-    gl_FragColor = vec4(0.5, 0.2, 0.8, 1.0); // purple color
+    vec3 lightDir = normalize(uLightPosition - vPosition);
+    vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(-vPosition); // Camera is at origin
+    vec3 reflectDir = reflect(-lightDir, normal);
+
+    // Ambient component
+    vec3 ambient = uAmbientLight * uMaterialAmbient;
+
+    // Diffuse component
+    float diff = max(dot(lightDir, normal), 0.0);
+    vec3 diffuse = uLightColor * uMaterialDiffuse * diff;
+
+    // Specular component
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), uShininess);
+    vec3 specular = uLightColor * uMaterialSpecular * spec;
+
+    // Combine components
+    vec3 color = ambient + diffuse + specular;
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
 
@@ -66,21 +101,61 @@ let vertexBuffer, indexBuffer;
 const shapes = {
   cube: {
     vertices: new Float32Array([
-      -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5,  0.5,  0.5, -0.5,  0.5,  0.5,
-      -0.5, -0.5, -0.5,  0.5, -0.5, -0.5,  0.5,  0.5, -0.5, -0.5,  0.5, -0.5,
+      // Positions          Normals
+      -0.5, -0.5,  0.5,     0,  0,  1, // Front face
+      0.5, -0.5,  0.5,     0,  0,  1,
+      0.5,  0.5,  0.5,     0,  0,  1,
+      -0.5,  0.5,  0.5,     0,  0,  1,
+
+      -0.5, -0.5, -0.5,     0,  0, -1, // Back face
+      -0.5,  0.5, -0.5,     0,  0, -1,
+      0.5,  0.5, -0.5,     0,  0, -1,
+      0.5, -0.5, -0.5,     0,  0, -1,
+
+      -0.5,  0.5, -0.5,     0,  1,  0, // Top face
+      -0.5,  0.5,  0.5,     0,  1,  0,
+      0.5,  0.5,  0.5,     0,  1,  0,
+      0.5,  0.5, -0.5,     0,  1,  0,
+
+      -0.5, -0.5, -0.5,     0, -1,  0, // Bottom face
+      0.5, -0.5, -0.5,     0, -1,  0,
+      0.5, -0.5,  0.5,     0, -1,  0,
+      -0.5, -0.5,  0.5,     0, -1,  0,
+
+      0.5, -0.5, -0.5,     1,  0,  0, // Right face
+      0.5,  0.5, -0.5,     1,  0,  0,
+      0.5,  0.5,  0.5,     1,  0,  0,
+      0.5, -0.5,  0.5,     1,  0,  0,
+
+      -0.5, -0.5, -0.5,    -1,  0,  0, // Left face
+      -0.5, -0.5,  0.5,    -1,  0,  0,
+      -0.5,  0.5,  0.5,    -1,  0,  0,
+      -0.5,  0.5, -0.5,    -1,  0,  0,
     ]),
     indices: new Uint16Array([
-      0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 3, 2, 6, 3, 6, 7, 0, 1, 5, 0, 5, 4,
-      1, 2, 6, 1, 6, 5, 0, 3, 7, 0, 7, 4,
+      0, 1, 2, 0, 2, 3,       // Front face
+      4, 5, 6, 4, 6, 7,       // Back face
+      8, 9, 10, 8, 10, 11,    // Top face
+      12, 13, 14, 12, 14, 15, // Bottom face
+      16, 17, 18, 16, 18, 19, // Right face
+      20, 21, 22, 20, 22, 23, // Left face
     ])
   },
   pyramid: {
     vertices: new Float32Array([
-      0,  0.5,  0,  -0.5, -0.5,  0.5,  0.5, -0.5,  0.5,  0.5, -0.5, -0.5,
-      -0.5, -0.5, -0.5,
+      // Positions          Normals
+      0,  0.5,  0,         0,  1,  0, // Top
+     -0.5, -0.5,  0.5,     0,  0,  1, // Front-left
+      0.5, -0.5,  0.5,     0,  0,  1, // Front-right
+      0.5, -0.5, -0.5,     1,  0,  0, // Back-right
+     -0.5, -0.5, -0.5,    -1,  0,  0, // Back-left
     ]),
     indices: new Uint16Array([
-      0, 1, 2,  0, 2, 3,  0, 3, 4,  0, 4, 1,  1, 2, 3,  1, 3, 4,
+      0, 1, 2, // Front face
+      0, 2, 3, // Right face
+      0, 3, 4, // Back face
+      0, 4, 1, // Left face
+      1, 4, 3, 1, 3, 2, // Bottom face
     ])
   },
   sphere: generateSphereData(0.5, 16, 16)
@@ -90,6 +165,7 @@ const shapes = {
 function generateSphereData(radius, longitudeBands, latitudeBands) {
   const vertices = [];
   const indices = [];
+
   for (let lat = 0; lat <= latitudeBands; ++lat) {
     const theta = lat * Math.PI / latitudeBands;
     const sinTheta = Math.sin(theta);
@@ -100,9 +176,21 @@ function generateSphereData(radius, longitudeBands, latitudeBands) {
       const sinPhi = Math.sin(phi);
       const cosPhi = Math.cos(phi);
 
-      vertices.push(radius * cosPhi * sinTheta, radius * cosTheta, radius * sinPhi * sinTheta);
+      // Calculate vertex position
+      const x = radius * cosPhi * sinTheta;
+      const y = radius * cosTheta;
+      const z = radius * sinPhi * sinTheta;
+
+      // Normalized normal vector
+      const nx = cosPhi * sinTheta;
+      const ny = cosTheta;
+      const nz = sinPhi * sinTheta;
+
+      // Add position and normal to the vertex data
+      vertices.push(x, y, z, nx, ny, nz);
     }
   }
+
   for (let lat = 0; lat < latitudeBands; ++lat) {
     for (let lon = 0; lon < longitudeBands; ++lon) {
       const first = lat * (longitudeBands + 1) + lon;
@@ -110,15 +198,18 @@ function generateSphereData(radius, longitudeBands, latitudeBands) {
       indices.push(first, second, first + 1, second, second + 1, first + 1);
     }
   }
+
   return {
     vertices: new Float32Array(vertices),
-    indices: new Uint16Array(indices)
+    indices: new Uint16Array(indices),
   };
 }
 
 // initialize buffers
 function setShape(shape) {
   const data = shapes[shape];
+  const stride = 6 * Float32Array.BYTES_PER_ELEMENT; // 3 for position, 3 for normal
+
   vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, data.vertices, gl.STATIC_DRAW);
@@ -129,7 +220,11 @@ function setShape(shape) {
 
   const aPosition = gl.getAttribLocation(program, 'aPosition');
   gl.enableVertexAttribArray(aPosition);
-  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, stride, 0);
+
+  const aNormal = gl.getAttribLocation(program, 'aNormal');
+  gl.enableVertexAttribArray(aNormal);
+  gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT);
 }
 
 // track user interaction
@@ -196,15 +291,35 @@ function createModelViewMatrix() {
   mat4.rotateY(modelViewMatrix, modelViewMatrix, rotationY);
   return modelViewMatrix;
 }
-
+// Add this function to calculate the normal matrix
+function createNormalMatrix(modelViewMatrix) {
+  const normalMatrix = mat4.create();
+  mat4.invert(normalMatrix, modelViewMatrix);
+  mat4.transpose(normalMatrix, normalMatrix);
+  return normalMatrix;
+}
 // draw scene
 function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   const projectionMatrix = createProjectionMatrix();
   const modelViewMatrix = createModelViewMatrix();
 
+  // Calculate normal matrix
+  const normalMatrix = createNormalMatrix(modelViewMatrix);
+
   gl.uniformMatrix4fv(uProjectionMatrix, false, projectionMatrix);
   gl.uniformMatrix4fv(uModelViewMatrix, false, modelViewMatrix);
+
+  // Add this line to pass the normal matrix
+  gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uNormalMatrix'), false, normalMatrix);
+
+  gl.uniform3fv(gl.getUniformLocation(program, 'uLightPosition'), [1.0, 1.0, 1.0]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uLightColor'), [1.0, 1.0, 1.0]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uAmbientLight'), [0.4, 0.4, 0.4]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialAmbient'), [0.2, 0.2, 0.2]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialDiffuse'), [0.8, 0.3, 0.3]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialSpecular'), [1.0, 1.0, 1.0]);
+  gl.uniform1f(gl.getUniformLocation(program, 'uShininess'), 64.0);
 
   const data = shapes[currentShape];
   gl.drawElements(gl.TRIANGLES, data.indices.length, gl.UNSIGNED_SHORT, 0);
