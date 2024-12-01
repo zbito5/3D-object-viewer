@@ -15,50 +15,56 @@ gl.enable(gl.DEPTH_TEST); // enable depth testing for 3d rendering
 const vertexShaderSource = `
   attribute vec4 aPosition;
   attribute vec3 aNormal;
+  
   uniform mat4 uModelViewMatrix;
   uniform mat4 uProjectionMatrix;
-  uniform mat4 uNormalMatrix; 
+  uniform mat4 uNormalMatrix;
+  
   varying vec3 vNormal;
   varying vec3 vPosition;
+  varying float vLightIntensity;
+  
   void main() {
-    vPosition = vec3(uModelViewMatrix * aPosition);
-    vNormal = normalize(mat3(uNormalMatrix) * aNormal); 
-    gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition;
+    // Transform vertex position to view space
+    vec4 viewPosition = uModelViewMatrix * aPosition;
+    vPosition = viewPosition.xyz;
+    
+    // Transform normal to view space using normal matrix
+    vNormal = normalize(mat3(uNormalMatrix) * aNormal);
+    
+    // Calculate lighting intensity based on normal and light direction
+    vec3 lightDirection = normalize(vec3(1.0, 1.0, 1.0)); // Directional light
+    float diffuseIntensity = max(dot(vNormal, lightDirection), 0.0);
+    vLightIntensity = 0.3 + 0.7 * diffuseIntensity; // Combine ambient and diffuse
+    
+    // Final position in clip space
+    gl_Position = uProjectionMatrix * viewPosition;
   }
 `;
 
 // fragment shader code
 const fragmentShaderSource = `
-  precision mediump float;
+  precision highp float;
+  
   varying vec3 vNormal;
   varying vec3 vPosition;
-  uniform vec3 uLightPosition;
-  uniform vec3 uLightColor;
-  uniform vec3 uAmbientLight;
+  varying float vLightIntensity;
+  
   uniform vec3 uMaterialAmbient;
   uniform vec3 uMaterialDiffuse;
   uniform vec3 uMaterialSpecular;
   uniform float uShininess;
-
+  
   void main() {
-    vec3 lightDir = normalize(uLightPosition - vPosition);
-    vec3 normal = normalize(vNormal);
-    vec3 viewDir = normalize(-vPosition); // Camera is at origin
-    vec3 reflectDir = reflect(-lightDir, normal);
-
-    // Ambient component
-    vec3 ambient = uAmbientLight * uMaterialAmbient;
-
-    // Diffuse component
-    float diff = max(dot(lightDir, normal), 0.0);
-    vec3 diffuse = uLightColor * uMaterialDiffuse * diff;
-
-    // Specular component
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), uShininess);
-    vec3 specular = uLightColor * uMaterialSpecular * spec;
-
-    // Combine components
-    vec3 color = ambient + diffuse + specular;
+    // Combine lighting intensity with material properties
+    vec3 color = uMaterialAmbient * 0.3 + uMaterialDiffuse * vLightIntensity;
+    
+    // Add specular highlight
+    vec3 viewDirection = normalize(-vPosition);
+    vec3 reflectDirection = reflect(-normalize(vec3(1.0, 1.0, 1.0)), vNormal);
+    float specularIntensity = pow(max(dot(viewDirection, reflectDirection), 0.0), uShininess);
+    color += uMaterialSpecular * specularIntensity;
+    
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -144,21 +150,21 @@ const shapes = {
   pyramid: {
     vertices: new Float32Array([
       // Positions          Normals
-      0,  0.5,  0,         0,  1,  0, // Top
-     -0.5, -0.5,  0.5,     0,  0,  1, // Front-left
-      0.5, -0.5,  0.5,     0,  0,  1, // Front-right
-      0.5, -0.5, -0.5,     1,  0,  0, // Back-right
-     -0.5, -0.5, -0.5,    -1,  0,  0, // Back-left
+      0,  0.5,  0,         0,  1,  0, // Top vertex
+     -0.5, -0.5,  0.5,     -0.577, -0.577,  0.577, // Front-left
+      0.5, -0.5,  0.5,      0.577, -0.577,  0.577, // Front-right
+      0.5, -0.5, -0.5,      0.577, -0.577, -0.577, // Back-right
+     -0.5, -0.5, -0.5,     -0.577, -0.577, -0.577, // Back-left
     ]),
     indices: new Uint16Array([
-      0, 1, 2, // Front face
-      0, 2, 3, // Right face
-      0, 3, 4, // Back face
-      0, 4, 1, // Left face
-      1, 4, 3, 1, 3, 2, // Bottom face
+      0, 1, 2,   // Front face
+      0, 2, 3,   // Right face
+      0, 3, 4,   // Back face
+      0, 4, 1,   // Left face
+      1, 4, 3,   1, 3, 2 // Bottom face
     ])
   },
-  sphere: generateSphereData(0.5, 16, 16)
+  sphere: generateSphereData(0.5, 32, 32)
 };
 
 // utility function to generate sphere data
@@ -303,21 +309,15 @@ function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   const projectionMatrix = createProjectionMatrix();
   const modelViewMatrix = createModelViewMatrix();
-
-  // Calculate normal matrix
   const normalMatrix = createNormalMatrix(modelViewMatrix);
 
   gl.uniformMatrix4fv(uProjectionMatrix, false, projectionMatrix);
   gl.uniformMatrix4fv(uModelViewMatrix, false, modelViewMatrix);
-
-  // Add this line to pass the normal matrix
   gl.uniformMatrix4fv(gl.getUniformLocation(program, 'uNormalMatrix'), false, normalMatrix);
 
-  gl.uniform3fv(gl.getUniformLocation(program, 'uLightPosition'), [1.0, 1.0, 1.0]);
-  gl.uniform3fv(gl.getUniformLocation(program, 'uLightColor'), [1.0, 1.0, 1.0]);
-  gl.uniform3fv(gl.getUniformLocation(program, 'uAmbientLight'), [0.4, 0.4, 0.4]);
+  // Improved material properties
   gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialAmbient'), [0.2, 0.2, 0.2]);
-  gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialDiffuse'), [0.8, 0.3, 0.3]);
+  gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialDiffuse'), [0.8, 0.6, 0.4]);
   gl.uniform3fv(gl.getUniformLocation(program, 'uMaterialSpecular'), [1.0, 1.0, 1.0]);
   gl.uniform1f(gl.getUniformLocation(program, 'uShininess'), 64.0);
 
