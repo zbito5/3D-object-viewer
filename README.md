@@ -39,7 +39,3 @@ Troubleshooting
 	•	Ensure your browser is up-to-date if the WebGL content does not render.
 	•	Script Errors:
 	•	Open the developer console in your browser to check for any errors or warnings that might provide more insight into issues with the WebGL scripts.
-
-Conclusion
-
-This README provides all necessary information to run and interact with the 3D Shape Viewer project. It is designed to be accessible even to those with minimal experience in web development or graphics programming.
