@@ -35,7 +35,10 @@ Technical Details
 
 Troubleshooting
 
-	•	WebGL Not Supported:
+	WebGL Not Supported:
 	•	Ensure your browser is up-to-date if the WebGL content does not render.
 	•	Script Errors:
 	•	Open the developer console in your browser to check for any errors or warnings that might provide more insight into issues with the WebGL scripts.
+	
+	Windows users
+	•	May not be able to fully interactive with page due to issues with responsive design, may need to down wsl
