@@ -1,6 +1,6 @@
 Project Overview
 
-This project is a 3D Shape Viewer designed to display various 3D shapes such as cubes, pyramids, and spheres in a web environment using WebGL. Users can interact with the objects by rotating them, zooming in and out, and changing their views. The application is built with HTML and JavaScript, utilizing WebGL for rendering the 3D graphics.
+This project is a 3D Shape Viewer designed to display various 3D shapes such as cubes, pyramids, spheres, cyclinder, etc in a web environment using WebGL. Users can interact with the objects by rotating them, zooming in and out, and changing their views. The application is built with HTML and JavaScript, utilizing WebGL for rendering the 3D graphics.
 
 Running the Project
 
